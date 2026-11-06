@@ -17,7 +17,7 @@ CONTAINS
                     & PSFUM,PSFVM,                                     &
                     & PTP,PRTKES,PRTHLS,PCOEF_DISS,PTDIFF,PTDISS,PRTKEMS,&
                     & TBUDGETS, KBUDGETS,                              &
-                    & PEDR, PTR,PDISS, PCURRENT_TKE_DISS               )
+                    & PEDR, PTR,PDISS, PCURRENT_TKE_DISS, PTURB_SPP   )
 !     ##################################################################
 !
 !
@@ -141,7 +141,7 @@ USE MODD_DIMPHYEX,       ONLY: DIMPHYEX_t
 USE MODD_FIELD,          ONLY: TFIELDMETADATA, TYPEREAL
 USE MODD_IO,             ONLY: TFILEDATA
 USE MODD_LES,            ONLY: TLES_t
-USE MODD_TURB_n,         ONLY: TURB_t
+USE MODD_TURB_n,         ONLY: TURB_t, JPTURBSPP_N, JPTURBSPP_CSHF
 !
 USE MODE_IO_FIELD_WRITE_PHY, ONLY: IO_FIELD_WRITE_PHY
 USE MODE_ll, ONLY: CLEANLIST_LL, UPDATE_HALO_LL
@@ -171,6 +171,7 @@ TYPE(CST_t),             INTENT(IN)   :: CST
 TYPE(CSTURB_t),          INTENT(IN)   :: CSTURB
 TYPE(TBUDGETCONF_t),     INTENT(IN)   :: BUCONF
 TYPE(TURB_t),            INTENT(IN)   :: TURBN
+REAL, DIMENSION(D%NIJT,JPTURBSPP_N), INTENT(IN) :: PTURB_SPP ! SPP: (perturbed) turbulence constants
 TYPE(TLES_t),            INTENT(INOUT):: TLES
 REAL, DIMENSION(D%NIJT,D%NKT),  INTENT(IN)   ::  PTKEM        ! TKE at t-deltat
 REAL, DIMENSION(D%NIJT,D%NKT),  INTENT(IN)   ::  PLM          ! mixing length         
@@ -294,7 +295,7 @@ END IF
 !
 DO JK=1, IKT
   DO JIJ=IIJB, IIJE
-    ZFLX(JIJ, JK) = TURBN%XCED * SQRT(PTKEM(JIJ, JK)) / PLEPS(JIJ, JK)
+    ZFLX(JIJ, JK) = PTURB_SPP(JIJ,JPTURBSPP_CSHF) * SQRT(PTKEM(JIJ, JK)) / PLEPS(JIJ, JK)
     ZSOURCE(JIJ, JK) = ( PRTKES(JIJ, JK) +  PRTKEMS(JIJ, JK) ) &
                                          / PRHODJ(JIJ, JK) - PTKEM(JIJ, JK) / PTSTEP &
        + PDP(JIJ, JK) + PTP(JIJ, JK) + ZTR(JIJ, JK) & 
@@ -468,7 +469,7 @@ IF (BUCONF%LBUDGET_TKE) THEN
   
   DO JK=1, IKT
     DO JIJ=IIJB, IIJE
-      ZMWORK1(JIJ, JK) = -TURBN%XCED * SQRT(PTKEM(JIJ, JK))/PLEPS(JIJ, JK) * &
+      ZMWORK1(JIJ, JK) = -PTURB_SPP(JIJ,JPTURBSPP_CSHF) * SQRT(PTKEM(JIJ, JK))/PLEPS(JIJ, JK) * &
                     (PEXPL*PTKEM(JIJ, JK) + TURBN%XIMPL*ZRES(JIJ, JK))*PRHODJ(JIJ, JK)
     END DO
   END DO
@@ -485,7 +486,7 @@ DO JK=1, IKT
   DO JIJ=IIJB, IIJE
     PRTKES(JIJ, JK) = PRTKES(JIJ, JK) + PRHODJ(JIJ, JK) * &
                     ( PDP(JIJ, JK) + PTP(JIJ, JK)                           &
-                      - TURBN%XCED * SQRT(PTKEM(JIJ, JK)) / PLEPS(JIJ, JK) &
+                      - PTURB_SPP(JIJ,JPTURBSPP_CSHF) * SQRT(PTKEM(JIJ, JK)) / PLEPS(JIJ, JK) &
                       * ( PEXPL*PTKEM(JIJ, JK) + TURBN%XIMPL*ZRES(JIJ, JK) ) )
     !
     PTDIFF(JIJ, JK) =  ZRES(JIJ, JK) / PTSTEP - PRTKES(JIJ, JK)&
@@ -519,7 +520,7 @@ IF (BUCONF%LBUDGET_TKE) CALL TBUDGETS(NBUDGET_TKE)%PTR%END_PHY(D, 'TR', PRTKES)
 DO JK=1, IKT
   DO JIJ=IIJB, IIJE
     PRTHLS(JIJ, JK) = PRTHLS(JIJ, JK) + &
-                                        TURBN%XCED * SQRT(PTKEM(JIJ, JK)) / PLEPS(JIJ, JK) * &
+                                        PTURB_SPP(JIJ,JPTURBSPP_CSHF) * SQRT(PTKEM(JIJ, JK)) / PLEPS(JIJ, JK) * &
                     (PEXPL*PTKEM(JIJ, JK) + TURBN%XIMPL*ZRES(JIJ, JK)) &
                     * PRHODJ(JIJ, JK) * PCOEF_DISS(JIJ, JK)
   END DO
@@ -543,7 +544,7 @@ IF(PRESENT(PDISS)) THEN
 
   DO JK=1, IKT
     DO JIJ=IIJB, IIJE
-      PDISS(JIJ, JK) =  -TURBN%XCED * (PTKEM(JIJ, JK)**1.5) / PLEPS(JIJ, JK)
+      PDISS(JIJ, JK) =  -PTURB_SPP(JIJ,JPTURBSPP_CSHF) * (PTKEM(JIJ, JK)**1.5) / PLEPS(JIJ, JK)
     END DO
   END DO
 
@@ -553,7 +554,7 @@ IF(PRESENT(PEDR)) THEN
 
   DO JK=1, IKT
     DO JIJ=IIJB, IIJE
-      PEDR(JIJ, JK) = TURBN%XCED * (PTKEM(JIJ, JK)**1.5) / PLEPS(JIJ, JK)
+      PEDR(JIJ, JK) = PTURB_SPP(JIJ,JPTURBSPP_CSHF) * (PTKEM(JIJ, JK)**1.5) / PLEPS(JIJ, JK)
     END DO
   END DO
 

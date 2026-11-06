@@ -27,7 +27,7 @@ SUBROUTINE TURB_VER(D,CST,CSTURB,TURBN,NEBN,TLES,                   &
                       PRUS,PRVS,PRWS,PRTHLS,PRRS,PRSVS,             &
                       PDP,PTP,PSIGS,PWTH,PWRC,PWSV,                 &
                       PSSTFL,PSSTFL_C,PSSRFL_C,PSSUFL_C,PSSVFL_C,   &
-                      PSSUFL,PSSVFL                                 )
+                      PSSUFL,PSSVFL, PTURB_SPP)
 
 !$ACDC singlecolumn 
 
@@ -224,7 +224,7 @@ USE MODD_DIMPHYEX,       ONLY: DIMPHYEX_t
 USE MODD_FIELD,          ONLY: TFIELDMETADATA, TYPEREAL
 USE MODD_IO,             ONLY: TFILEDATA
 USE MODD_LES,            ONLY: TLES_t
-USE MODD_TURB_n,         ONLY: TURB_t
+USE MODD_TURB_n,         ONLY: TURB_t, JPTURBSPP_N
 USE MODD_NEB_n,          ONLY: NEB_t
 !
 USE MODE_GRADIENT_M_PHY,       ONLY: GZ_M_W_PHY
@@ -245,6 +245,7 @@ IMPLICIT NONE
 !*      0.1  declarations of arguments
 !
 TYPE(DIMPHYEX_t),       INTENT(IN)   :: D
+REAL, DIMENSION(D%NIJT,JPTURBSPP_N), INTENT(IN) :: PTURB_SPP ! SPP: (perturbed) turbulence constants
 TYPE(CST_t),            INTENT(IN)   :: CST
 TYPE(CSTURB_t),         INTENT(IN)   :: CSTURB
 TYPE(TURB_t),           INTENT(IN)   :: TURBN
@@ -423,7 +424,7 @@ CALL PRANDTL(D,CST,CSTURB,TURBN, KRR,KSV,KRRI,TURBN%LTURB_FLX,  &
              ZRED2TH3, ZRED2R3, ZRED2THR3,         &
              ZREDS1,ZRED2THS, ZRED2RS,             &
              ZBLL_O_E,                             &
-             ZETHETA, ZEMOIST                      )
+             ZETHETA, ZEMOIST, PTURB_SPP)
 !
 ! Buoyancy coefficient
 !
@@ -483,9 +484,9 @@ ENDIF
 !
 GUSERV = KRR/=0
 !
-CALL PHI3(D,CSTURB,TURBN,ZREDTH1,ZREDR1,ZRED2TH3,ZRED2R3,ZRED2THR3,TURBN%CTURBDIM,GUSERV,ZPHI3)
+CALL PHI3(D,CSTURB,TURBN,PTURB_SPP,ZREDTH1,ZREDR1,ZRED2TH3,ZRED2R3,ZRED2THR3,TURBN%CTURBDIM,GUSERV,ZPHI3)
 IF(KRR/=0) THEN
-  CALL PSI3(D,CSTURB,TURBN,ZREDR1,ZREDTH1,ZRED2R3,ZRED2TH3,ZRED2THR3,TURBN%CTURBDIM,GUSERV,ZPSI3)
+  CALL PSI3(D,CSTURB,TURBN,PTURB_SPP,ZREDR1,ZREDTH1,ZRED2R3,ZRED2TH3,ZRED2THR3,TURBN%CTURBDIM,GUSERV,ZPSI3)
 ELSE
   DO JK=1, IKT
     DO JIJ=IIJB, IIJE
@@ -496,7 +497,7 @@ END IF
 !
 ! Prandtl numbers for scalars
 !
-CALL PSI_SV(D,CSTURB,TURBN,KSV,ZREDTH1,ZREDR1,ZREDS1,ZRED2THS,ZRED2RS,ZPHI3,ZPSI3,ZPSI_SV)
+CALL PSI_SV(D,CSTURB,TURBN,PTURB_SPP,KSV,ZREDTH1,ZREDR1,ZREDS1,ZRED2THS,ZRED2RS,ZPHI3,ZPSI3,ZPSI_SV)
 !
 ! LES diagnostics
 !
@@ -548,7 +549,7 @@ ENDIF
                         PFWTH,PFWR,PFTH2,PFR2,PFTHR,                  &
                         MFMOIST,PBL_DEPTH,ZWTHV,                      &
                         PRTHLS,PRRS,ZTHLP,ZRP,PTP,PWTH,PWRC,          &
-                        PSSTFL, PSSTFL_C, PSSRFL_C                    )
+                        PSSTFL, PSSTFL_C, PSSRFL_C, PTURB_SPP)
 !
   CALL  TURB_VER_THERMO_CORR(D,CST,CSTURB,TURBN,NEBN,TLES,            &
                         KRR,KRRL,KRRI,KSV,                            &
@@ -565,7 +566,7 @@ ENDIF
                         ZRED2R3, ZRED2THR3, ZBLL_O_E, ZETHETA,        &
                         ZEMOIST, ZREDTH1, ZREDR1, ZPHI3, ZPSI3, ZD,   &
                         PFWTH,PFWR,PFTH2,PFR2,PFTHR,                  &
-                        ZTHLP,ZRP,MFMOIST,PSIGS                  )
+                        ZTHLP,ZRP,MFMOIST,PSIGS, PTURB_SPP)
 !
 !----------------------------------------------------------------------------
 !
@@ -594,7 +595,7 @@ CALL  TURB_VER_DYN_FLUX(D,CST,CSTURB,TURBN,TLES,KSV,O2D,OFLAT,      &
                       PTHLM,PRM,PSVM,PUM,PVM,PWM,PUSLOPEM,PVSLOPEM, &
                       PTKEM,ZLM,MFMOIST,ZWU,ZWV,                    &
                       PRUS,PRVS,PRWS,                               &
-                      PDP,PTP,PSSUFL_C,PSSVFL_C,PSSUFL,PSSVFL       )
+                      PDP,PTP,PSSUFL_C,PSSVFL_C,PSSUFL,PSSVFL, PTURB_SPP)
 !
 !----------------------------------------------------------------------------
 !
@@ -614,7 +615,7 @@ CALL  TURB_VER_SV_FLUX(D,CST,CSTURB,TURBN,TLES,ONOMIXLG,            &
                       PSFSVM,PSFSVP,                                &
                       PSVM,                                         &
                       PTKEM,ZLM,MFMOIST,ZPSI_SV,                    &
-                      PRSVS,PWSV                                    )
+                      PRSVS,PWSV, PTURB_SPP)
 !
 !
 IF (KSV>0 .AND. TLES%LLES_CALL)                                          &
@@ -624,7 +625,7 @@ CALL  TURB_VER_SV_CORR(D,CST,CSTURB,TURBN,TLES,KRR,KRRL,KRRI,OOCEAN,&
                       PTHLM,PRM,PTHVREF,                            &
                       PLOCPEXNM,PATHETA,PAMOIST,PSRCM,ZPHI3,ZPSI3,  &
                       PWM,PSVM,                                     &
-                      PTKEM,ZLM,PLEPS,ZPSI_SV                       )
+                      PTKEM,ZLM,PLEPS,ZPSI_SV, PTURB_SPP)
 !
 !
 !----------------------------------------------------------------------------

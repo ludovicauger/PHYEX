@@ -11,7 +11,7 @@ SUBROUTINE TURB_VER_SV_CORR(D,CST,CSTURB,TURBN,TLES,KRR,KRRL,KRRI,OOCEAN, &
                       PTHLM,PRM,PTHVREF,                            &
                       PLOCPEXNM,PATHETA,PAMOIST,PSRCM,PPHI3,PPSI3,  &
                       PWM,PSVM,                                     &
-                      PTKEM,PLM,PLEPS,PPSI_SV                       )
+                      PTKEM,PLM,PLEPS,PPSI_SV, PTURB_SPP)
 !     ###############################################################
 !
 !
@@ -57,7 +57,7 @@ USE YOMHOOK , ONLY : LHOOK, DR_HOOK, JPHOOK
 !
 USE MODD_CST, ONLY: CST_t
 USE MODD_CTURB, ONLY: CSTURB_t
-USE MODD_TURB_n, ONLY: TURB_t
+USE MODD_TURB_n, ONLY: TURB_t, JPTURBSPP_N, JPTURBSPP_CED
 USE MODD_DIMPHYEX, ONLY: DIMPHYEX_t
 USE MODD_LES, ONLY: TLES_t
 !
@@ -76,6 +76,7 @@ IMPLICIT NONE
 !
 !
 TYPE(DIMPHYEX_t),       INTENT(IN)   ::  D
+REAL, DIMENSION(D%NIJT,JPTURBSPP_N), INTENT(IN) :: PTURB_SPP ! SPP: (perturbed) turbulence constants
 TYPE(CST_t),            INTENT(IN)   ::  CST
 TYPE(CSTURB_t),         INTENT(IN)   ::  CSTURB
 TYPE(TURB_t),           INTENT(IN)   ::  TURBN
@@ -118,7 +119,7 @@ REAL, DIMENSION(D%NIJT,D%NKT,KSV), INTENT(IN) ::  PPSI_SV      ! Inv.Turb.Sch.fo
 !
 REAL, DIMENSION(D%NIJT,D%NKT)  :: ZA, ZFLXZ, ZWKLES
 !
-REAL :: ZCSV          !constant for the scalar flux
+REAL, DIMENSION(D%NIJT) :: ZCSV !constant for the scalar flux
 !
 INTEGER             :: JSV          ! loop counters
 INTEGER             :: IIJB, IIJE, IKT
@@ -146,9 +147,9 @@ CALL SECOND_MNH(ZTIME1)
 !
 IF(OBLOWSNOW) THEN
 ! See Vionnet (PhD, 2012) for a complete discussion around the value of the Schmidt number for blowing snow variables          
-   ZCSV= TURBN%XCHF/PRSNOW
+   ZCSV(:)= PTURB_SPP(:,JPTURBSPP_CED)/PRSNOW
 ELSE
-   ZCSV= TURBN%XCHF
+   ZCSV(:)= PTURB_SPP(:,JPTURBSPP_CED)
 ENDIF
 !
 DO JSV=1,KSV
@@ -172,7 +173,7 @@ CALL MZF_PHY(D, ZFLXZ, ZMZF2D_WORK1)
 
 DO JK=1, IKT
   DO JIJ=IIJB, IIJE
-    ZFLXZ(JIJ, JK) = ZCSV / ZCSVD * PLM(JIJ, JK) * PLEPS(JIJ, JK) * ZMZF2D_WORK1(JIJ, JK)    
+    ZFLXZ(JIJ, JK) = ZCSV(JIJ) / ZCSVD * PLM(JIJ, JK) * PLEPS(JIJ, JK) * ZMZF2D_WORK1(JIJ, JK)    
   END DO
 END DO
 
@@ -201,7 +202,7 @@ CALL GZ_M_W_PHY(D, PSVM(:,:,JSV),PDZZ, ZGZ_M_W2D_WORK2)
 
 DO JK=1, IKT
   DO JIJ=IIJB, IIJE
-    ZFLXZ(JIJ, JK)= ( TURBN%XCSHF * PPHI3(JIJ, JK) + ZCSV * PPSI_SV(JIJ, JK, JSV) )              &
+    ZFLXZ(JIJ, JK)= ( PTURB_SPP(JIJ,JPTURBSPP_CED) * PPHI3(JIJ, JK) + ZCSV(JIJ) * PPSI_SV(JIJ, JK, JSV) )              &
                       *  ZGZ_M_W2D_WORK1(JIJ, JK)                          &
                       *  ZGZ_M_W2D_WORK2(JIJ, JK)    
   END DO
@@ -229,7 +230,7 @@ CALL GZ_M_W_PHY(D, PSVM(:,:,JSV),PDZZ, ZGZ_M_W2D_WORK2)
 
 DO JK=1, IKT
   DO JIJ=IIJB, IIJE
-    ZFLXZ(JIJ, JK)= ( ZCSV * PPSI3(JIJ, JK) + ZCSV * PPSI_SV(JIJ, JK, JSV) )             &
+    ZFLXZ(JIJ, JK)= ( ZCSV(JIJ) * PPSI3(JIJ, JK) + ZCSV(JIJ) * PPSI_SV(JIJ, JK, JSV) )             &
                         *  ZGZ_M_W2D_WORK1(JIJ, JK)                 &
                         *  ZGZ_M_W2D_WORK2(JIJ, JK)      
   END DO

@@ -18,7 +18,7 @@ SUBROUTINE TURB_VER_SV_FLUX(D,CST,CSTURB,TURBN,TLES,ONOMIXLG,       &
                       PSFSVM,PSFSVP,                                &
                       PSVM,                                         &
                       PTKEM,PLM,MFMOIST,PPSI_SV,                    &
-                      PRSVS,PWSV                                    )
+                      PRSVS,PWSV, PTURB_SPP)
 !
 !
 !
@@ -223,7 +223,7 @@ USE MODD_FIELD,            ONLY: TFIELDMETADATA, TYPEREAL
 USE MODD_IO,               ONLY: TFILEDATA
 USE MODD_LES,              ONLY: TLES_t
 USE MODD_PARAMETERS,       ONLY: NMNHNAMELGTMAX
-USE MODD_TURB_n,           ONLY: TURB_t
+USE MODD_TURB_n,           ONLY: TURB_t, JPTURBSPP_N, JPTURBSPP_CED
 !
 USE MODE_IO_FIELD_WRITE_PHY, ONLY: IO_FIELD_WRITE_PHY
 USE MODE_TRIDIAG,        ONLY: TRIDIAG
@@ -246,6 +246,7 @@ IMPLICIT NONE
 !
 !
 TYPE(DIMPHYEX_t),       INTENT(IN)   :: D
+REAL, DIMENSION(D%NIJT,JPTURBSPP_N), INTENT(IN) :: PTURB_SPP ! SPP: (perturbed) turbulence constants
 TYPE(CST_t),            INTENT(IN)   :: CST
 TYPE(CSTURB_t),         INTENT(IN)   :: CSTURB
 TYPE(TURB_t),           INTENT(IN)   :: TURBN
@@ -310,7 +311,7 @@ INTEGER             :: JIJ,JK           ! loop
 REAL :: ZTIME1, ZTIME2
 
 REAL :: ZCSVP = 4.0  ! constant for scalar flux presso-correlation (RS81)
-REAL :: ZCSV          !constant for the scalar flux
+REAL, DIMENSION(D%NIJT) :: ZCSV !constant for the scalar flux
 !
 CHARACTER(LEN=NMNHNAMELGTMAX) :: YMNHNAME
 REAL(KIND=JPHOOK)             :: ZHOOK_HANDLE
@@ -359,9 +360,9 @@ ENDIF
 !
 IF(OBLOWSNOW) THEN
 ! See Vionnet (PhD, 2012) for a complete discussion around the value of the Schmidt number for blowing snow variables
-   ZCSV=TURBN%XCHF/PRSNOW
+   ZCSV(:)=PTURB_SPP(:,JPTURBSPP_CED)/PRSNOW
 ELSE
-   ZCSV=TURBN%XCHF
+   ZCSV(:)=PTURB_SPP(:,JPTURBSPP_CED)
 ENDIF
 !----------------------------------------------------------------------------
 !
@@ -387,7 +388,7 @@ DO JSV=1,KSV
 
       DO JK=1, IKT
         DO JIJ=IIJB, IIJE
-          ZA(JIJ, JK) = -PTSTEP*ZCSV*PPSI_SV(JIJ, JK, JSV) *   &
+          ZA(JIJ, JK) = -PTSTEP*ZCSV(JIJ)*PPSI_SV(JIJ, JK, JSV) *   &
                ZKEFF(JIJ, JK) * ZMZMRHODJ(JIJ, JK) / PDZZ(JIJ, JK)**2
         END DO
       END DO
@@ -466,7 +467,7 @@ CALL DZM_PHY(D, ZSHUGRADWK1_2D, ZDZM2D_WORK1)
 
 DO JK=1, IKT
   DO JIJ=IIJB, IIJE
-    ZFLXZ(JIJ, JK) = -ZCSV * PPSI_SV(JIJ, JK, JSV) * ZMZM2D_WORK1(JIJ, JK) / PDZZ(JIJ, JK) * &
+    ZFLXZ(JIJ, JK) = -ZCSV(JIJ) * PPSI_SV(JIJ, JK, JSV) * ZMZM2D_WORK1(JIJ, JK) / PDZZ(JIJ, JK) * &
                       ZDZM2D_WORK1(JIJ, JK)    
   END DO
 END DO
