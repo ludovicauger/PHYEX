@@ -18,7 +18,8 @@
                             &PRH,                                              &
                             &POUT_RV, POUT_RC, POUT_RI, POUT_TH,               &
                             &PHLC_HRC, PHLC_HCF, PHLI_HRI, PHLI_HCF,           &
-                            &PHLC_HRC_MF, PHLC_HCF_MF, PHLI_HRI_MF, PHLI_HCF_MF)
+                            &PHLC_HRC_MF, PHLC_HCF_MF, PHLI_HRI_MF, PHLI_HCF_MF,        &
+                            &PRCRIAUTI, PRCRIAUTC)
 
 !$ACDC singlecolumn --nocreate-interface
 
@@ -203,6 +204,8 @@ REAL, DIMENSION(D%NIJT,D%NKT), OPTIONAL, INTENT(IN)   ::  PHLC_HRC_MF
 REAL, DIMENSION(D%NIJT,D%NKT), OPTIONAL, INTENT(IN)   ::  PHLC_HCF_MF
 REAL, DIMENSION(D%NIJT,D%NKT), OPTIONAL, INTENT(IN)   ::  PHLI_HRI_MF
 REAL, DIMENSION(D%NIJT,D%NKT), OPTIONAL, INTENT(IN)   ::  PHLI_HCF_MF
+REAL, DIMENSION(D%NIJT),       OPTIONAL, INTENT(IN)   ::  PRCRIAUTI ! SPP: perturbed ri->rs autoconversion threshold
+REAL, DIMENSION(D%NIJT),       OPTIONAL, INTENT(IN)   ::  PRCRIAUTC ! SPP: perturbed rc->rr autoconversion threshold
 !
 !
 !*       0.2   Declarations of local variables :
@@ -215,6 +218,8 @@ REAL, DIMENSION(D%NIJT,D%NKT) &
                             ZCPH, &  ! guess of the CPh for the mixing
                             ZLV,  &  ! guess of the Lv at t+1
                             ZLS      ! guess of the Ls at t+1
+REAL, DIMENSION(D%NIJT) :: ZRCRIAUTI, ZRCRIAUTC, ZXACRIAUTI, ZXBCRIAUTI ! SPP
+REAL :: ZTCRI0, ZCRI0
 REAL :: ZCRIAUT, & ! Autoconversion thresholds
         ZHCF, ZHR
 !
@@ -234,6 +239,32 @@ REAL(KIND=JPHOOK) :: ZHOOK_HANDLE
 !               -------------
 !
 IF (LHOOK) CALL DR_HOOK('ICE_ADJUST',0,ZHOOK_HANDLE)
+!
+! SPP: possibly perturbed autoconversion thresholds
+IF (PRESENT(PRCRIAUTC)) THEN
+  ZRCRIAUTC(:)=PRCRIAUTC(:)
+ELSE
+  ZRCRIAUTC(:)=ICEP%XCRIAUTC
+ENDIF
+IF (PRESENT(PRCRIAUTI)) THEN
+  ZRCRIAUTI(:)=PRCRIAUTI(:)
+  IF (PARAMI%LCRIAUTI) THEN
+    !second point to determine 10**(aT+b) law
+    ZTCRI0=-40.0
+    ZCRI0=1.25E-6
+    ZXBCRIAUTI(:)=-( LOG10(PRCRIAUTI(:)) - LOG10(ZCRI0)*ICEP%XT0CRIAUTI/ZTCRI0 ) &
+                  *ZTCRI0/(ICEP%XT0CRIAUTI-ZTCRI0)
+    ZXACRIAUTI(:)=(LOG10(ZCRI0)-ZXBCRIAUTI(:))/ZTCRI0
+  ELSE
+    ZXACRIAUTI(:)=ICEP%XACRIAUTI
+    ZXBCRIAUTI(:)=ICEP%XBCRIAUTI
+  ENDIF
+ELSE
+  ZRCRIAUTI(:)=ICEP%XCRIAUTI
+  ZXACRIAUTI(:)=ICEP%XACRIAUTI
+  ZXBCRIAUTI(:)=ICEP%XBCRIAUTI
+ENDIF
+!
 !
 IKTB=D%NKTB
 IKTE=D%NKTE
@@ -392,7 +423,7 @@ ELSE !NEBN%LSUBG_COND case
                     (ZW1 * ZLV(JIJ,JK) + ZW2 * ZLS(JIJ,JK)) / ZCPH(JIJ,JK) / PEXNREF(JIJ,JK)
       !
       IF(LLHLC_H) THEN
-        ZCRIAUT=ICEP%XCRIAUTC/PRHODREF(JIJ,JK)
+        ZCRIAUT=ZRCRIAUTC(JIJ)/PRHODREF(JIJ,JK)
         IF(LLNONE)THEN
           IF(ZW1*PTSTEP>PCF_MF(JIJ,JK) * ZCRIAUT) THEN
             PHLC_HRC(JIJ,JK)=PHLC_HRC(JIJ,JK)+ZW1*PTSTEP
@@ -423,7 +454,7 @@ ELSE !NEBN%LSUBG_COND case
         ENDIF
       ENDIF
       IF(LLHLI_H) THEN
-        ZCRIAUT=MIN(ICEP%XCRIAUTI,10**(ICEP%XACRIAUTI*(ZT(JIJ,JK)-CST%XTT)+ICEP%XBCRIAUTI))
+        ZCRIAUT=MIN(ZRCRIAUTI(JIJ),10**(ZXACRIAUTI(JIJ)*(ZT(JIJ,JK)-CST%XTT)+ZXBCRIAUTI(JIJ)))
         IF(LLNONE)THEN
           IF(ZW2*PTSTEP>PCF_MF(JIJ,JK) * ZCRIAUT) THEN
             PHLI_HRI(JIJ,JK)=PHLI_HRI(JIJ,JK)+ZW2*PTSTEP
@@ -550,7 +581,8 @@ IF ( NEBN%LSUBG_COND ) THEN
        PICLDFR, PWCLDFR, PSSIO, PSSIU, PIFR, PSIGQSAT,                   &
        PLV=ZLV, PLS=ZLS, PCPH=ZCPH,                                      &
        PHLC_HRC=PHLC_HRC, PHLC_HCF=PHLC_HCF, PHLI_HRI=PHLI_HRI, PHLI_HCF=PHLI_HCF,&
-       PICE_CLD_WGT=PICE_CLD_WGT)
+       PICE_CLD_WGT=PICE_CLD_WGT,                                       &
+       PRCRIAUTI=ZRCRIAUTI, PRCRIAUTC=ZRCRIAUTC, PXACRIAUTI=ZXACRIAUTI, PXBCRIAUTI=ZXBCRIAUTI)
 ELSE
   !
   !*       4.     ALL OR NOTHING CONDENSATION SCHEME
@@ -570,7 +602,8 @@ ELSE
        PICLDFR, PWCLDFR, PSSIO, PSSIU, PIFR, ZSIGQSAT,                   &
        PLV=ZLV, PLS=ZLS, PCPH=ZCPH,                                      &
        PHLC_HRC=PHLC_HRC, PHLC_HCF=PHLC_HCF, PHLI_HRI=PHLI_HRI, PHLI_HCF=PHLI_HCF,&
-       PICE_CLD_WGT=PICE_CLD_WGT)
+       PICE_CLD_WGT=PICE_CLD_WGT,                                       &
+       PRCRIAUTI=ZRCRIAUTI, PRCRIAUTC=ZRCRIAUTC, PXACRIAUTI=ZXACRIAUTI, PXBCRIAUTI=ZXBCRIAUTI)
 ENDIF
 
 END SUBROUTINE ITERATION

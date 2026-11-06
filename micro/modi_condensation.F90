@@ -13,7 +13,8 @@ INTERFACE
                            &PICLDFR, PWCLDFR, PSSIO, PSSIU, PIFR, PSIGQSAT,                                 &
                            &PLV, PLS, PCPH,                                                                 &
                            &PHLC_HRC, PHLC_HCF, PHLI_HRI, PHLI_HCF,                                         &
-                           &PICE_CLD_WGT)
+                           &PICE_CLD_WGT,                                                                   &
+                           &PRCRIAUTI, PRCRIAUTC, PXACRIAUTI, PXBCRIAUTI)
 
 !$ACDC singlecolumn
 
@@ -78,6 +79,8 @@ REAL, DIMENSION(D%NIJT,D%NKT), OPTIONAL, INTENT(OUT)   :: PHLC_HCF ! cloud fract
 REAL, DIMENSION(D%NIJT,D%NKT), OPTIONAL, INTENT(OUT)   :: PHLI_HRI
 REAL, DIMENSION(D%NIJT,D%NKT), OPTIONAL, INTENT(OUT)   :: PHLI_HCF
 REAL, DIMENSION(D%NIJT),       OPTIONAL, INTENT(IN)    :: PICE_CLD_WGT
+REAL, DIMENSION(D%NIJT),       OPTIONAL, INTENT(IN)    :: PRCRIAUTI, PRCRIAUTC ! SPP
+REAL, DIMENSION(D%NIJT),       OPTIONAL, INTENT(IN)    :: PXACRIAUTI, PXBCRIAUTI ! SPP
 END SUBROUTINE CONDENSATION
 !
 END INTERFACE

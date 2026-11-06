@@ -19,7 +19,8 @@ INTERFACE
                             &PRH,                                              &
                             &POUT_RV, POUT_RC, POUT_RI, POUT_TH,               &
                             &PHLC_HRC, PHLC_HCF, PHLI_HRI, PHLI_HCF,           &
-                            &PHLC_HRC_MF, PHLC_HCF_MF, PHLI_HRI_MF, PHLI_HCF_MF)
+                            &PHLC_HRC_MF, PHLC_HCF_MF, PHLI_HRI_MF, PHLI_HCF_MF,        &
+                            &PRCRIAUTI, PRCRIAUTC)
 
 !$ACDC singlecolumn
 
@@ -108,6 +109,7 @@ REAL, DIMENSION(D%NIJT,D%NKT), OPTIONAL, INTENT(IN)   ::  PHLC_HRC_MF
 REAL, DIMENSION(D%NIJT,D%NKT), OPTIONAL, INTENT(IN)   ::  PHLC_HCF_MF
 REAL, DIMENSION(D%NIJT,D%NKT), OPTIONAL, INTENT(IN)   ::  PHLI_HRI_MF
 REAL, DIMENSION(D%NIJT,D%NKT), OPTIONAL, INTENT(IN)   ::  PHLI_HCF_MF
+REAL, DIMENSION(D%NIJT),       OPTIONAL, INTENT(IN)   ::  PRCRIAUTI, PRCRIAUTC ! SPP
 !
 END SUBROUTINE ICE_ADJUST
 !
