@@ -24,7 +24,7 @@ SUBROUTINE COMPUTE_UPDRAFT_RHCJ10(D,CST,NEBN,PARAMMF,TURBN,CSTURB,&
                                  PFRAC_UP,PFRAC_ICE_UP,PRSAT_UP,  &
                                  PEMF,PDETR,PENTR,                &
                                  PBUO_INTEG,KKLCL,KKETL,KKCTL,    &
-                                 PDEPTH     )
+                                 PDEPTH, PXCMF     )
 
 !$ACDC singlecolumn --dummy
 
@@ -173,6 +173,8 @@ REAL, DIMENSION(D%NIJT)              ::  ZW_MAX               ! w**2  max of the
 REAL, DIMENSION(D%NIJT)              ::  ZZTOP                ! Top of the updraft
 
 REAL  :: ZDEPTH_MAX1, ZDEPTH_MAX2 ! control auto-extinction process
+REAL, DIMENSION(D%NIJT) :: ZXCMF ! SPP: mass flux closure coefficient
+REAL, DIMENSION(D%NIJT), OPTIONAL, INTENT(IN) :: PXCMF ! SPP: (perturbed) mass flux closure coefficient
 
 REAL  :: ZTMAX,ZRMAX, ZEPS  ! control value
 
@@ -183,6 +185,12 @@ REAL, DIMENSION(D%NIJT,16)    :: ZBUF
 !
 REAL(KIND=JPHOOK) :: ZHOOK_HANDLE
 IF (LHOOK) CALL DR_HOOK('COMPUTE_UPDRAFT_RHCJ10',0,ZHOOK_HANDLE)
+! SPP: possibly perturbed mass flux closure coefficient
+IF (PRESENT(PXCMF)) THEN
+  ZXCMF(:)=PXCMF(:)
+ELSE
+  ZXCMF(:)=PARAMMF%XCMF
+ENDIF
 !
 IIJE=D%NIJE
 IIJB=D%NIJB
@@ -380,7 +388,7 @@ DO JIJ=IIJB,IIJE
 
   ! Mass flux at KKB level (updraft triggered if PSFTH>0.)
   IF (ZWTHVSURF>0.010) THEN ! <==  Not 0 Important to have stratocumulus !!!!!
-    PEMF(JIJ,IKB) = PARAMMF%XCMF * ZRHO_F(JIJ,IKB) * ((ZG_O_THVREF(JIJ,IKB))*ZWTHVSURF*ZLUP(JIJ))**(1./3.)
+    PEMF(JIJ,IKB) = ZXCMF(JIJ) * ZRHO_F(JIJ,IKB) * ((ZG_O_THVREF(JIJ,IKB))*ZWTHVSURF*ZLUP(JIJ))**(1./3.)
     PFRAC_UP(JIJ,IKB)=MIN(PEMF(JIJ,IKB)/(SQRT(ZW_UP2(JIJ,IKB))*ZRHO_F(JIJ,IKB)),PARAMMF%XFRAC_UP_MAX)
     ZW_UP2(JIJ,IKB)=(PEMF(JIJ,IKB)/(PFRAC_UP(JIJ,IKB)*ZRHO_F(JIJ,IKB)))**2
     GTEST(JIJ)=.TRUE.

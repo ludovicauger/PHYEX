@@ -24,7 +24,7 @@ INTERFACE
                 PU_UP, PV_UP, PTKE_UP, PTHV_UP, PW_UP,                &
                 PFRAC_UP,PEMF,PDETR,PENTR,PTAUFUNC,                   &
                 KKLCL,KKETL,KKCTL,PDX,PDY,PRSVS,PSVMIN,               &
-                BUCONF, TBUDGETS, KBUDGETS                            )
+                BUCONF, TBUDGETS, KBUDGETS, PXCMF                     )
 
 !$ACDC singlecolumn
 
@@ -110,6 +110,7 @@ REAL, DIMENSION(D%NIJT,D%NKT,KSV),      INTENT(IN),    OPTIONAL :: PRSVS ! sourc
 REAL,DIMENSION(JPSVMAX),                INTENT(IN),    OPTIONAL :: PSVMIN       ! minimum value for SV variables (for Budgets)
 TYPE(TBUDGETCONF_t),                    INTENT(IN),    OPTIONAL :: BUCONF       ! budget structure
 TYPE(TBUDGETDATA_PTR), DIMENSION(KBUDGETS), INTENT(INOUT), OPTIONAL :: TBUDGETS
+REAL,DIMENSION(D%NIJT),                 OPTIONAL, INTENT(IN)    :: PXCMF        ! SPP
 INTEGER,                                INTENT(IN)              :: KBUDGETS     ! option. because not used in arpifs
 
 END SUBROUTINE SHALLOW_MF
