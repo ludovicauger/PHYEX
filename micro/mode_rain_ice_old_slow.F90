@@ -9,7 +9,7 @@ MODULE MODE_RAIN_ICE_OLD_SLOW
 
   CONTAINS
 
-  SUBROUTINE RAIN_ICE_OLD_SLOW(D, CST, ICED, ICEP, BUCONF,         &
+  SUBROUTINE RAIN_ICE_OLD_SLOW(D, CST, PARAMI, ICED, ICEP, BUCONF,  &
                                KSIZE, OCND2, LMODICEDEP,           &
                                PTSTEP, ZREDSN,                     &
                                GMICRO, PRHODJ, PTHS, PRVS,         &
@@ -21,11 +21,13 @@ MODULE MODE_RAIN_ICE_OLD_SLOW
                                PLBDAG, PKA, PDV,                   &
                                PAI, PCJ, PAA2, PBB3,               &
                                ZDICRIT, ZREDGR, ZKVO,              &
-                               TBUDGETS, KBUDGETS)
+                               TBUDGETS, KBUDGETS,                 &
+                               ZZRCRIAUTI, ZZRDEPSRED, ZZRDEPGRED)
 
     USE PARKIND1,             ONLY: JPRB
     USE YOMHOOK,              ONLY: LHOOK, DR_HOOK, JPHOOK
     USE MODD_DIMPHYEX,        ONLY: DIMPHYEX_T
+    USE MODD_PARAM_ICE_n,     ONLY: PARAM_ICE_t
     USE MODD_CST,             ONLY: CST_T
     USE MODD_RAIN_ICE_PARAM_n,  ONLY: RAIN_ICE_PARAM_T
     USE MODD_RAIN_ICE_DESCR_n,  ONLY: RAIN_ICE_DESCR_T
@@ -49,7 +51,9 @@ MODULE MODE_RAIN_ICE_OLD_SLOW
 
     REAL, INTENT(IN) :: PTSTEP ! Double Time step (single if cold start)
 
+    TYPE(PARAM_ICE_t), INTENT(IN) :: PARAMI
     REAL, INTENT(IN) :: ZREDSN
+    REAL, DIMENSION(KSIZE), INTENT(IN) :: ZZRCRIAUTI, ZZRDEPSRED, ZZRDEPGRED ! SPP for microphysics
 
     LOGICAL, DIMENSION(D%NIT,D%NKT), INTENT(IN) :: GMICRO ! Layer thickness (m)
 
@@ -102,6 +106,8 @@ MODULE MODE_RAIN_ICE_OLD_SLOW
     REAL, DIMENSION(KSIZE) :: ZBFT ! Mean time for a pristine ice crystal to reach
                                    ! size of an snow/graupel particle (ZDICRIT)
     REAL, DIMENSION(KSIZE) :: ZCRIAUTI ! Snow-to-ice autoconversion thres.
+    REAL, DIMENSION(KSIZE) :: ZXACRIAUTI, ZXBCRIAUTI
+    REAL :: ZTCRI0, ZCRI0
     REAL, DIMENSION(KSIZE) :: ZZW      ! Work array
     REAL, DIMENSION(KSIZE) :: ZZW2     ! Work array
     REAL, DIMENSION(D%NIT,D%NKT) :: ZWKBUD
@@ -221,7 +227,7 @@ MODULE MODE_RAIN_ICE_OLD_SLOW
                   - MIN(PRSS(JL),ABS(ZZW(JL)))*(0.5-SIGN(0.5,ZZW(JL)))
 
           IF (ZZW(JL) < 0.0) THEN
-            ZZW(JL) = ZZW(JL) * ICEP%XRDEPSRED
+            ZZW(JL) = ZZW(JL) * ZZRDEPSRED(JL)
           END IF
 
           PRSS(JL) = PRSS(JL) + ZZW(JL)
@@ -264,7 +270,19 @@ MODULE MODE_RAIN_ICE_OLD_SLOW
 
 !*       3.4.5  compute the autoconversion of r_i for r_s production: RIAUTS
 
-    ZCRIAUTI(:)=MIN(ICEP%XCRIAUTI,10**(ICEP%XACRIAUTI*(PZT(:)-CST%XTT)+ICEP%XBCRIAUTI))
+    ! SPP: possibly perturbed ri->rs autoconversion law
+    IF (PARAMI%LCRIAUTI) THEN
+      !second point to determine 10**(aT+b) law
+      ZTCRI0=-40.0
+      ZCRI0=1.25E-6
+      ZXBCRIAUTI(:)=-( LOG10(ZZRCRIAUTI(:)) - LOG10(ZCRI0)*ICEP%XT0CRIAUTI/ZTCRI0 ) &
+                    *ZTCRI0/(ICEP%XT0CRIAUTI-ZTCRI0)
+      ZXACRIAUTI(:)=(LOG10(ZCRI0)-ZXBCRIAUTI(:))/ZTCRI0
+    ELSE
+      ZXACRIAUTI(:)=ICEP%XACRIAUTI
+      ZXBCRIAUTI(:)=ICEP%XBCRIAUTI
+    ENDIF
+    ZCRIAUTI(:)=MIN(ZZRCRIAUTI(:),10**(ZXACRIAUTI(:)*(PZT(:)-CST%XTT)+ZXBCRIAUTI(:)))
     ZZW(:) = 0.0
     IF (BUCONF%LBUDGET_RI) ZWKBUD(:,:) = UNPACK(PRIS(:)*PZRHODJ(:),MASK=GMICRO(:,:),FIELD=0.0)
     IF (BUCONF%LBUDGET_RI) CALL TBUDGETS(NBUDGET_RI)%PTR%INIT_PHY(D, 'AUTS', ZWKBUD)
@@ -357,7 +375,7 @@ MODULE MODE_RAIN_ICE_OLD_SLOW
         ZZW(JL) = ZZW(JL)*ZREDGR
 
         IF (ZZW(JL) < 0.0 ) THEN
-          ZZW(JL)  = ZZW(JL) * ICEP%XRDEPGRED
+          ZZW(JL)  = ZZW(JL) * ZZRDEPGRED(JL)
         END IF
 
         PRSS(JL) = (ZZW(JL) + PRGS(JL))* ZZW2(JL) + PRSS(JL)
@@ -369,7 +387,7 @@ MODULE MODE_RAIN_ICE_OLD_SLOW
 
     DO JL = 1, KSIZE
       IF (ZZW(JL) < 0.0) THEN
-        ZZW(JL)  = ZZW(JL) * ICEP%XRDEPGRED
+        ZZW(JL)  = ZZW(JL) * ZZRDEPGRED(JL)
       END IF
     END DO
 

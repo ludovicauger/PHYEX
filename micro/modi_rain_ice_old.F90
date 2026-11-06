@@ -18,6 +18,8 @@ INTERFACE
                                OAERONRT, OAEIFN, PCLDROP, PIFNNC,                     &
                                TBUDGETS, KBUDGETS,                                    &
                                PICENU, PKGN_ACON, PKGN_SBGR,                          &
+                               PRCRIAUTI, PRCRIAUTC, PRDEPSRED, PRDEPGRED,            &
+                               PALPHAC2, PRZNUC, PRXCS, LALPHAC2, LRZNUC,             &
                                PRHT, PRHS, PINPRH, PFPR)
 !
 USE MODD_BUDGET,         ONLY: TBUDGETDATA_PTR, TBUDGETCONF_t
@@ -110,6 +112,9 @@ REAL, DIMENSION(D%NIT,D%NKT),     INTENT(IN)  :: PIFNNC   ! Ice freezing nuclei 
 TYPE(TBUDGETDATA_PTR), DIMENSION(KBUDGETS), INTENT(INOUT) :: TBUDGETS
 INTEGER, INTENT(IN) :: KBUDGETS
 REAL, DIMENSION(D%NIT), INTENT(IN)            :: PICENU, PKGN_ACON, PKGN_SBGR
+REAL, DIMENSION(D%NIJT), INTENT(IN)           :: PRCRIAUTI, PRCRIAUTC, PRDEPSRED, PRDEPGRED ! SPP
+REAL, DIMENSION(D%NIJT), INTENT(IN)           :: PALPHAC2, PRZNUC, PRXCS ! SPP
+LOGICAL, INTENT(IN)                           :: LALPHAC2, LRZNUC ! SPP
 REAL, DIMENSION(D%NIT,D%NKT),   OPTIONAL, INTENT(IN)    :: PRHT    ! Hail m.r. at t
 REAL, DIMENSION(D%NIT,D%NKT),   OPTIONAL, INTENT(INOUT) :: PRHS    ! Hail m.r. source
 REAL, DIMENSION(D%NIT),         OPTIONAL, INTENT(OUT)   :: PINPRH  ! Hail instant precip

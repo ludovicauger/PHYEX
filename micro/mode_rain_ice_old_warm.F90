@@ -21,7 +21,7 @@ MODULE MODE_RAIN_ICE_OLD_WARM
                                ZHLC_HCF, ZHLC_LCF, ZHLC_HRC, ZHLC_LRC,       &
                                ZAA2W, ZBB3W,                                 &
                                ZZT, ZPRES, ZESW,                             &
-                               TBUDGETS, KBUDGETS)
+                               TBUDGETS, KBUDGETS, ZZRCRIAUTC)
 
     USE YOMHOOK,             ONLY: LHOOK, DR_HOOK, JPHOOK
     USE MODD_DIMPHYEX,       ONLY: DIMPHYEX_T
@@ -99,6 +99,7 @@ MODULE MODE_RAIN_ICE_OLD_WARM
 
 !   SPP arrays
     REAL, DIMENSION(KSIZE), INTENT(IN) :: ZZKGN_ACON
+    REAL, DIMENSION(KSIZE), INTENT(IN) :: ZZRCRIAUTC ! SPP: rc->rr autoconversion threshold
     REAL, DIMENSION(KSIZE), INTENT(IN) :: ZZKGN_SBGR
 
     TYPE(TBUDGETDATA_PTR), DIMENSION(KBUDGETS), INTENT(INOUT) :: TBUDGETS
@@ -143,7 +144,7 @@ MODULE MODE_RAIN_ICE_OLD_WARM
     ELSE
       DO JK = 1, KSIZE
         IF (ZRCS(JK) > 0.0 .AND. ZHLC_HCF(JK) > 0.0) THEN
-          ZZW(JK) = ICEP%XTIMAUTC*MAX(ZHLC_HRC(JK)/ZHLC_HCF(JK) - ICEP%XCRIAUTC/ZRHODREF(JK),0.0)
+          ZZW(JK) = ICEP%XTIMAUTC*MAX(ZHLC_HRC(JK)/ZHLC_HCF(JK) - ZZRCRIAUTC(JK)/ZRHODREF(JK),0.0)
           ZZW(JK) = MIN(ZRCS(JK),ZHLC_HCF(JK)*ZZW(JK))
           ZRCS(JK) = ZRCS(JK) - ZZW(JK)
           ZRRS(JK) = ZRRS(JK) + ZZW(JK)

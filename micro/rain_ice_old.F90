@@ -13,6 +13,8 @@
                                OAERONRT, OAEIFN, PCLDROP, PIFNNC,                     &
                                TBUDGETS, KBUDGETS,                                    &
                                PICENU, PKGN_ACON, PKGN_SBGR,                          &
+                               PRCRIAUTI, PRCRIAUTC, PRDEPSRED, PRDEPGRED,            &
+                               PALPHAC2, PRZNUC, PRXCS, LALPHAC2, LRZNUC,             &
                                PRHT, PRHS, PINPRH, PFPR)
 
       USE YOMHOOK,             ONLY: LHOOK, DR_HOOK, JPHOOK
@@ -274,6 +276,9 @@ REAL, DIMENSION(D%NIJT,D%NKT), INTENT(IN)  :: PIFNNC   ! Ice freezing nuclei con
 TYPE(TBUDGETDATA_PTR), DIMENSION(KBUDGETS), INTENT(INOUT) :: TBUDGETS
 INTEGER, INTENT(IN) :: KBUDGETS
 REAL, DIMENSION(D%NIJT), INTENT(IN)            :: PICENU, PKGN_ACON, PKGN_SBGR
+REAL, DIMENSION(D%NIJT), INTENT(IN)            :: PRCRIAUTI, PRCRIAUTC, PRDEPSRED, PRDEPGRED ! SPP
+REAL, DIMENSION(D%NIJT), INTENT(IN)            :: PALPHAC2, PRZNUC, PRXCS ! SPP: cloud droplet shape parameters, fall speed factor
+LOGICAL, INTENT(IN)                            :: LALPHAC2, LRZNUC ! SPP: perturbed cloud droplet shape parameters
 REAL, DIMENSION(D%NIJT,D%NKT),   OPTIONAL, INTENT(IN)    :: PRHT    ! Hail m.r. at t
 REAL, DIMENSION(D%NIJT,D%NKT),   OPTIONAL, INTENT(INOUT) :: PRHS    ! Hail m.r. source
 REAL, DIMENSION(D%NIJT),         OPTIONAL, INTENT(OUT)   :: PINPRH  ! Hail instant precip
@@ -396,6 +401,8 @@ REAL            :: ZKVO  ! factor used for caluclate maximum mass in the ice
 
 ! SPP arrays
 REAL, DIMENSION(KSIZE) :: ZZKGN_ACON,ZZKGN_SBGR
+REAL, DIMENSION(KSIZE) :: ZZRCRIAUTI,ZZRCRIAUTC,ZZRDEPSRED,ZZRDEPGRED
+REAL, DIMENSION(D%NIJT) :: ZXLBC1, ZXLBC2, ZZFSEDC1, ZZFSEDC2
 
      !internal fractions etc, finally saturation ratio over ice 'source' value
 
@@ -458,33 +465,55 @@ IF (NINT(ICEP%XFRMIN(18)) == 1) LTIW=.TRUE.
 !               -----------------------------------
 
 IF (OSEDIC) THEN
+  ! SPP: possibly perturbed cloud droplet size distribution parameters
+  ! (reference values when the perturbation is inactive)
+  DO JIJ = 1, D%NIJT
+    IF (LRZNUC) THEN
+      ZXLBC1(JIJ)   = ICED%XAR*GAMMA(PRZNUC(JIJ)+3./ICED%XALPHAC)/GAMMA(PRZNUC(JIJ))
+      ZZFSEDC1(JIJ) = ICEP%XFSEDC(1) * &
+         & (GAMMA(PRZNUC(JIJ)+(ICED%XDC+3.)/ICED%XALPHAC)/GAMMA(PRZNUC(JIJ)+3./ICED%XALPHAC)) / &
+         & (GAMMA(ICED%XNUC+(ICED%XDC+3.)/ICED%XALPHAC)/GAMMA(ICED%XNUC+3./ICED%XALPHAC))
+    ELSE
+      ZXLBC1(JIJ)   = ICED%XLBC(1)
+      ZZFSEDC1(JIJ) = ICEP%XFSEDC(1)
+    ENDIF
+    IF (LALPHAC2) THEN
+      ZXLBC2(JIJ)   = ICED%XAR*GAMMA(ICED%XNUC2+3./PALPHAC2(JIJ))/GAMMA(ICED%XNUC2)
+      ZZFSEDC2(JIJ) = ICEP%XFSEDC(2) * &
+         & (GAMMA(ICED%XNUC2+(ICED%XDC+3.)/PALPHAC2(JIJ))/GAMMA(ICED%XNUC2+3./PALPHAC2(JIJ))) / &
+         & (GAMMA(ICED%XNUC2+(ICED%XDC+3.)/ICED%XALPHAC2)/GAMMA(ICED%XNUC2+3./ICED%XALPHAC2))
+    ELSE
+      ZXLBC2(JIJ)   = ICED%XLBC(2)
+      ZZFSEDC2(JIJ) = ICEP%XFSEDC(2)
+    ENDIF
+  ENDDO
   ZRAY(:,:)   = 0.
   IF (ICEP%XFRMIN(26)>0.001 .OR. (OAERONRT.AND.PARAMI%LEXCLDROP)) THEN
     ! Assume "average" distr. func for simplicity
     DO JK = D%NKTB,D%NKTE
       DO JIJ = D%NIJB,D%NIJE
-        ZLBC(JIJ,JK)   = 0.5* (ICED%XLBC(2)+ICED%XLBC(1)) 
-        ZFSEDC(JIJ,JK) = 0.5* (ICEP%XFSEDC(2)+ICEP%XFSEDC(1))
-        ZFSEDC(JIJ,JK) = MAX(MIN(ICEP%XFSEDC(1),ICEP%XFSEDC(2)),ZFSEDC(JIJ,JK))
-        ZRAY(JIJ,JK)   = 0.5*( 0.5*GAMMA(ICED%XNUC+1.0/ICED%XALPHAC)/(GAMMA(ICED%XNUC)) + &
-          0.5*GAMMA(ICED%XNUC2+1.0/ICED%XALPHAC2)/(GAMMA(ICED%XNUC2)))
+        ZLBC(JIJ,JK)   = 0.5* (ZXLBC2(JIJ)+ZXLBC1(JIJ)) 
+        ZFSEDC(JIJ,JK) = 0.5* (ZZFSEDC2(JIJ)+ZZFSEDC1(JIJ))
+        ZFSEDC(JIJ,JK) = MAX(MIN(ZZFSEDC1(JIJ),ZZFSEDC2(JIJ)),ZFSEDC(JIJ,JK))
+        ZRAY(JIJ,JK)   = 0.5*( 0.5*GAMMA(PRZNUC(JIJ)+1.0/ICED%XALPHAC)/(GAMMA(PRZNUC(JIJ))) + &
+          0.5*GAMMA(ICED%XNUC2+1.0/PALPHAC2(JIJ))/(GAMMA(ICED%XNUC2)))
       ENDDO
     ENDDO
   ELSE
     DO JK=D%NKTB,D%NKTE
       DO JIJ = D%NIJB,D%NIJE
-        ZLBC(JIJ,JK)   = PSEA(JIJ)*ICED%XLBC(2) + (1.-PSEA(JIJ))*ICED%XLBC(1)
-        ZFSEDC(JIJ,JK) = (PSEA(JIJ)*ICEP%XFSEDC(2) + (1.-PSEA(JIJ))*ICEP%XFSEDC(1))
-        ZFSEDC(JIJ,JK) = MAX(MIN(ICEP%XFSEDC(1),ICEP%XFSEDC(2)),ZFSEDC(JIJ,JK))
-        ZRAY(JIJ,JK)   = 0.5*((1.-PSEA(JIJ))*GAMMA(ICED%XNUC + 1.0/ICED%XALPHAC)/(GAMMA(ICED%XNUC)) &
-                     & + PSEA(JIJ)*GAMMA(ICED%XNUC2+1.0/ICED%XALPHAC2)/(GAMMA(ICED%XNUC2)))
+        ZLBC(JIJ,JK)   = PSEA(JIJ)*ZXLBC2(JIJ) + (1.-PSEA(JIJ))*ZXLBC1(JIJ)
+        ZFSEDC(JIJ,JK) = (PSEA(JIJ)*ZZFSEDC2(JIJ) + (1.-PSEA(JIJ))*ZZFSEDC1(JIJ))
+        ZFSEDC(JIJ,JK) = MAX(MIN(ZZFSEDC1(JIJ),ZZFSEDC2(JIJ)),ZFSEDC(JIJ,JK))
+        ZRAY(JIJ,JK)   = 0.5*((1.-PSEA(JIJ))*GAMMA(PRZNUC(JIJ) + 1.0/ICED%XALPHAC)/(GAMMA(PRZNUC(JIJ))) &
+                     & + PSEA(JIJ)*GAMMA(ICED%XNUC2+1.0/PALPHAC2(JIJ))/(GAMMA(ICED%XNUC2)))
       ENDDO
     ENDDO
   ENDIF
   DO JK=D%NKTB,D%NKTE
     DO JIJ = D%NIJB, D%NIJE
       ZRAY(JIJ,JK)      = MAX(1.,ZRAY(JIJ,JK))
-      ZLBC(JIJ,JK)      = MAX(MIN(ICED%XLBC(1),ICED%XLBC(2)),ZLBC(JIJ,JK))
+      ZLBC(JIJ,JK)      = MAX(MIN(ZXLBC1(JIJ),ZXLBC2(JIJ)),ZLBC(JIJ,JK))
     ENDDO
   ENDDO
 ENDIF !OSEDIC
@@ -636,6 +665,10 @@ IF (KSIZE >= 0) THEN
     IF (LTIW) ZTIW(JL)=TIWMX_TAB(CST, ICEP%TIWMX, ZPRES(JL),ZZT(JL), ZRVS(JL)*PTSTEP,0.,ZRSP,ZRSW,0.1)
     ZZKGN_ACON(JL)=PKGN_ACON(I1(JL))
     ZZKGN_SBGR(JL)=PKGN_SBGR(I1(JL))
+    ZZRCRIAUTI(JL)=PRCRIAUTI(I1(JL))
+    ZZRCRIAUTC(JL)=PRCRIAUTC(I1(JL))
+    ZZRDEPSRED(JL)=PRDEPSRED(I1(JL))
+    ZZRDEPGRED(JL)=PRDEPGRED(I1(JL))
 
     IF (OCND2) THEN
        ZESI(JL) = ESATI(ICEP%TIWMX, ZZT(JL))
@@ -698,7 +731,7 @@ IF (KSIZE >= 0) THEN
   !Cloud water split between high and low content part is done here
   !according to autoconversion option
   DO JL = 1, KSIZE
-    ZRCRAUTC(JL) = ICEP%XCRIAUTC/ZRHODREF(JL) ! Autoconversion rc threshold
+    ZRCRAUTC(JL) = ZZRCRIAUTC(JL)/ZRHODREF(JL) ! Autoconversion rc threshold
   ENDDO
 
   IF (HSUBG_AUCV_RC == 'NONE') THEN
@@ -933,7 +966,7 @@ IF (KSIZE >= 0) THEN
     ZRF(JL)=ZRAINFR(I1(JL),I2(JL))
   END DO
 !
-  CALL RAIN_ICE_OLD_SLOW(D, CST, ICED, ICEP, BUCONF, &
+  CALL RAIN_ICE_OLD_SLOW(D, CST, PARAMI, ICED, ICEP, BUCONF, &
                          KSIZE, OCND2, LMODICEDEP, &
                          PTSTEP, ZREDSN, &
                          GMICRO, PRHODJ, PTHS, PRVS, &
@@ -945,7 +978,8 @@ IF (KSIZE >= 0) THEN
                          ZLBDAG, ZKA, ZDV, &
                          ZAI, ZCJ, ZAA2, ZBB3, &
                          ZDICRIT, ZREDGR, ZKVO, &
-                         TBUDGETS, KBUDGETS)
+                         TBUDGETS, KBUDGETS, &
+                         ZZRCRIAUTI, ZZRDEPSRED, ZZRDEPGRED)
 !
 !-------------------------------------------------------------------------------
 !
@@ -984,7 +1018,7 @@ IF (KSIZE >= 0) THEN
                            ZHLC_HCF, ZHLC_LCF, ZHLC_HRC, ZHLC_LRC, &
                            ZAA2W, ZBB3W, &
                            ZZT, ZPRES, ZESW, &
-                           TBUDGETS, KBUDGETS)
+                           TBUDGETS, KBUDGETS, ZZRCRIAUTC)
   END IF
 !
 !-------------------------------------------------------------------------------
@@ -1340,7 +1374,7 @@ IF (HSEDIM == 'STAT') THEN
                                        PTHT, PRCT, PRRT, PRST, PRGT, &
                                        PRCS, PRRS, PRIS, PRSS, PRGS, &
                                        PINPRC, PINPRR, PINPRS, PINPRG, &
-                                       ZRAY, ZLBC, ZFSEDC, ZCONC3D, &
+                                       ZRAY, ZLBC, ZFSEDC, ZCONC3D, PRXCS, &
                                        PRHT, PRHS, PINPRH, PFPR)
 
   IF(BUCONF%LBU_ENABLE) THEN
@@ -1380,7 +1414,7 @@ ELSEIF (HSEDIM == 'SPLI') THEN
                                         PTHT, PRCT, PRRT, PRST, PRGT, &
                                         PRCS, PRRS, PRIS, PRSS, PRGS, &
                                         PINPRC, PINPRR, PINPRS, PINPRG, &
-                                        ZRAY, ZLBC, ZFSEDC, ZCONC3D, &
+                                        ZRAY, ZLBC, ZFSEDC, ZCONC3D, PRXCS, &
                                         PRHT, PRHS, PINPRH, PFPR)
 
   IF(BUCONF%LBU_ENABLE) THEN
