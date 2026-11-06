@@ -18,7 +18,8 @@ INTERFACE
                              PQPIS, PQCS, PQRS, PQIS, PQSS, PQGS, PQNIS,           &
                              PEFIELDW, PLATHAM_IAGGS,                              &
                              PSEA, PTOWN, PCONC3D,                                 &
-                             PINPRH, PFPR, PQHT, PQHS                  )
+                             PINPRH, PFPR, PQHT, PQHS,                             &
+                             PRCRIAUTI, PRCRIAUTC                      )
 !
 USE MODD_BUDGET,         ONLY: TBUDGETDATA_PTR, TBUDGETCONF_t
 USE MODD_CST,            ONLY: CST_t
@@ -108,6 +109,8 @@ REAL, DIMENSION(MERGE(D%NIJT,0,OELEC),MERGE(D%NKT,0,OELEC)), OPTIONAL, INTENT(IN
 REAL, DIMENSION(D%NIJT),           OPTIONAL, INTENT(IN)    :: PSEA    ! Sea Mask
 REAL, DIMENSION(D%NIJT),           OPTIONAL, INTENT(IN)    :: PTOWN   ! Fraction that is town
 REAL, DIMENSION(D%NIJT,D%NKT), OPTIONAL,  INTENT(IN)    :: PCONC3D    ! Cloud droplet number concentration
+REAL, DIMENSION(D%NIJT), OPTIONAL, INTENT(IN)           :: PRCRIAUTI  ! SPP: perturbed ri->rs autoconversion threshold
+REAL, DIMENSION(D%NIJT), OPTIONAL, INTENT(IN)           :: PRCRIAUTC  ! SPP: perturbed rc->rr autoconversion threshold
 REAL, DIMENSION(D%NIJT),           OPTIONAL, INTENT(OUT)   :: PINPRH  ! Hail instant precip
 REAL, DIMENSION(D%NIJT,D%NKT,KRR), OPTIONAL, INTENT(OUT)   :: PFPR    ! upper-air precipitation fluxes
 REAL, DIMENSION(MERGE(D%NIJT,0,OELEC),MERGE(D%NKT,0,OELEC)), OPTIONAL, INTENT(INOUT) :: PQHT ! Hail electric charge at t

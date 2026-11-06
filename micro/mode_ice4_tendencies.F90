@@ -20,7 +20,7 @@ SUBROUTINE ICE4_TENDENCIES(CST, PARAMI, ICEP, ICED, BUCONF, KPROMA, KSIZE, &
                           &PA, PB, PATH, PBTH, &
                           &PHLC_HCF, PHLC_LCF, PHLC_HRC, PHLC_LRC, &
                           &PHLI_HCF, PHLI_LCF, PHLI_HRI, PHLI_LRI, &
-                          &PRAINFR)
+                          &PRAINFR, PRCRIAUTI, PRCRIAUTC)
 !!
 !!**  PURPOSE
 !!    -------
@@ -121,6 +121,8 @@ REAL, DIMENSION(KPROMA),       INTENT(INOUT) :: PHLI_LCF
 REAL, DIMENSION(KPROMA),       INTENT(INOUT) :: PHLI_HRI
 REAL, DIMENSION(KPROMA),       INTENT(INOUT) :: PHLI_LRI
 REAL, DIMENSION(KPROMA),       INTENT(INOUT) :: PRAINFR   ! Rain fraction
+REAL, DIMENSION(KPROMA), OPTIONAL, INTENT(IN) :: PRCRIAUTI ! SPP: perturbed ri->rs autoconversion threshold
+REAL, DIMENSION(KPROMA), OPTIONAL, INTENT(IN) :: PRCRIAUTC ! SPP: perturbed rc->rr autoconversion threshold
 !
 !*       0.2  declaration of local variables
 !
@@ -348,10 +350,10 @@ ELSE
 ENDIF ! ODSOFT
 !
 !Cloud water split between high and low content part is done here
-CALL ICE4_COMPUTE_PDF(CST, ICEP, ICED, KSIZE, PARAMI%CSUBG_AUCV_RC, PARAMI%CSUBG_AUCV_RI, PARAMI%CSUBG_PR_PDF,&
+CALL ICE4_COMPUTE_PDF(CST, PARAMI, ICEP, ICED, KSIZE, PARAMI%CSUBG_AUCV_RC, PARAMI%CSUBG_AUCV_RI, PARAMI%CSUBG_PR_PDF,&
                       LDCOMPUTE, PRHODREF, ZVART(:,IRC), ZVART(:,IRI), PCF, ZT, PSIGMA_RC, &
                       PHLC_HCF, PHLC_LCF, PHLC_HRC, PHLC_LRC, &
-                      PHLI_HCF, PHLI_LCF, PHLI_HRI, PHLI_LRI, ZRAINFR)
+                      PHLI_HCF, PHLI_LCF, PHLI_HRI, PHLI_LRI, ZRAINFR, PRCRIAUTI, PRCRIAUTC)
 LLRFR=PARAMI%CSUBG_RC_RR_ACCR=='PRFR' .OR. PARAMI%CSUBG_RR_EVAP=='PRFR'
 IF (LLRFR) THEN
   !To be exact, ICE4_RAINFR_VERT should be called here with the updated PRAINFR
@@ -441,7 +443,7 @@ CALL ICE4_SLOW(CST, PARAMI, ICEP, ICED, KPROMA, KSIZE, ODSOFT, OELEC, LDCOMPUTE,
               &ZLBDAS, ZLBDAG, &
               &ZAI, ZCJ, PHLI_HCF, PHLI_HRI, &
               &PLATHAM_IAGGS, &
-              &PBU_INST(:, IRCHONI), PBU_INST(:, IRVDEPS), PBU_INST(:, IRIAGGS), PBU_INST(:, IRIAUTS), PBU_INST(:, IRVDEPG))
+              &PBU_INST(:, IRCHONI), PBU_INST(:, IRVDEPS), PBU_INST(:, IRIAGGS), PBU_INST(:, IRIAUTS), PBU_INST(:, IRVDEPG), PRCRIAUTI)
 !
 ZDEPG_S(:)=0.0
 ZNODEPG_S(:)=1.0

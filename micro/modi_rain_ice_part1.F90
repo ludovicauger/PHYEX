@@ -20,7 +20,7 @@ INTERFACE
                                    PSEA, PTOWN, PCONC3D,                                 &
                                    PINPRH, PFPR, PQHT, PQHS,                             &
                                    PT, PLVFACT, PLSFACT, PWR, PWTH, PZCONC3D, OMICRO,    &
-                                   PRVHENI, PZZZZ )
+                                   PRVHENI, PZZZZ, PRCRIAUTI, PRCRIAUTC )
 !
 USE MODD_BUDGET,         ONLY: TBUDGETDATA_PTR, TBUDGETCONF_t
 USE MODD_CST,            ONLY: CST_t
@@ -114,6 +114,7 @@ REAL, DIMENSION(D%NIJT,D%NKT), INTENT(OUT) :: PZCONC3D
 LOGICAL, DIMENSION(D%NIJT,D%NKT), INTENT(OUT) :: OMICRO
 REAL, DIMENSION(D%NIJT,D%NKT), INTENT(OUT) :: PRVHENI
 REAL, DIMENSION(D%NIJT,D%NKT), INTENT(OUT) :: PZZZZ
+REAL, DIMENSION(D%NIJT,D%NKT), INTENT(IN)  :: PRCRIAUTI, PRCRIAUTC ! SPP: autoconversion thresholds
 !
 END SUBROUTINE RAIN_ICE_PART1
 END INTERFACE

@@ -11,7 +11,7 @@ SUBROUTINE ICE4_SLOW(CST, PARAMI, ICEP, ICED, KPROMA, KSIZE, LDSOFT, OELEC, LDCO
                      &PLBDAS, PLBDAG, &
                      &PAI, PCJ, PHLI_HCF, PHLI_HRI,&
                      &PLATHAM_IAGGS, &
-                     &PRCHONI, PRVDEPS, PRIAGGS, PRIAUTS, PRVDEPG)
+                     &PRCHONI, PRVDEPS, PRIAGGS, PRIAUTS, PRVDEPG, PRCRIAUTI)
 !!
 !!**  PURPOSE
 !!    -------
@@ -74,16 +74,38 @@ REAL, DIMENSION(KPROMA),      INTENT(INOUT) :: PRVDEPS  ! Deposition on r_s
 REAL, DIMENSION(KPROMA),      INTENT(INOUT) :: PRIAGGS  ! Aggregation on r_s
 REAL, DIMENSION(KPROMA),      INTENT(INOUT) :: PRIAUTS  ! Autoconversion of r_i for r_s production
 REAL, DIMENSION(KPROMA),      INTENT(INOUT) :: PRVDEPG  ! Deposition on r_g
+REAL, DIMENSION(KPROMA), OPTIONAL, INTENT(IN) :: PRCRIAUTI ! SPP: perturbed ri->rs autoconversion threshold
 !
 !*       0.2  declaration of local variables
 !
-REAL, DIMENSION(KPROMA) :: ZCRIAUTI
+REAL, DIMENSION(KPROMA) :: ZCRIAUTI, ZCRIAUTI_SPP, ZXACRIAUTI, ZXBCRIAUTI
+REAL :: ZTCRI0, ZCRI0
 INTEGER                 :: JL
 REAL            :: ZREDGR,ZREDSN
 REAL(KIND=JPHOOK) :: ZHOOK_HANDLE
 !-------------------------------------------------------------------------------
 !
 IF (LHOOK) CALL DR_HOOK('ICE4_SLOW', 0, ZHOOK_HANDLE)
+!
+! SPP: possibly perturbed autoconversion thresholds
+IF (PRESENT(PRCRIAUTI)) THEN
+  ZCRIAUTI_SPP(:)=PRCRIAUTI(:)
+  IF (PARAMI%LCRIAUTI) THEN
+    !second point to determine 10**(aT+b) law
+    ZTCRI0=-40.0
+    ZCRI0=1.25E-6
+    ZXBCRIAUTI(:)=-( LOG10(PRCRIAUTI(:)) - LOG10(ZCRI0)*ICEP%XT0CRIAUTI/ZTCRI0 ) &
+                  *ZTCRI0/(ICEP%XT0CRIAUTI-ZTCRI0)
+    ZXACRIAUTI(:)=(LOG10(ZCRI0)-ZXBCRIAUTI(:))/ZTCRI0
+  ELSE
+    ZXACRIAUTI(:)=ICEP%XACRIAUTI
+    ZXBCRIAUTI(:)=ICEP%XBCRIAUTI
+  ENDIF
+ELSE
+  ZCRIAUTI_SPP(:)=ICEP%XCRIAUTI
+  ZXACRIAUTI(:)=ICEP%XACRIAUTI
+  ZXBCRIAUTI(:)=ICEP%XBCRIAUTI
+ENDIF
 !
 !-------------------------------------------------------------------------------
 !
@@ -195,7 +217,7 @@ DO JL=1, KSIZE
   IF(PHLI_HRI(JL)>ICED%XRTMIN(4) .AND. LDCOMPUTE(JL)) THEN
     IF(.NOT. LDSOFT) THEN
       !ZCRIAUTI(:)=MIN(ICEP%XCRIAUTI,10**(0.06*(PT(:)-CST%XTT)-3.5))
-      ZCRIAUTI(JL)=MIN(ICEP%XCRIAUTI,10**(ICEP%XACRIAUTI*(PT(JL)-CST%XTT)+ICEP%XBCRIAUTI))
+      ZCRIAUTI(JL)=MIN(ZCRIAUTI_SPP(JL),10**(ZXACRIAUTI(JL)*(PT(JL)-CST%XTT)+ZXBCRIAUTI(JL)))
       PRIAUTS(JL) = ICEP%XTIMAUTI * EXP( ICEP%XTEXAUTI*(PT(JL)-CST%XTT) ) &
                                   * MAX(PHLI_HRI(JL)-ZCRIAUTI(JL)*PHLI_HCF(JL), 0.)
     ENDIF

@@ -20,7 +20,7 @@
                                    PSEA, PTOWN, PCONC3D,                                 &
                                    PINPRH, PFPR, PQHT, PQHS,                             &
                                    PT, PLVFACT, PLSFACT, PWR, PWTH, PZCONC3D, OMICRO,    &
-                                   PRVHENI, PZZZZ )
+                                   PRVHENI, PZZZZ, PRCRIAUTI, PRCRIAUTC )
 !     #############################################################################
 !
 !!****  * -  compute the explicit microphysical sources
@@ -261,6 +261,7 @@ REAL, DIMENSION(D%NIJT,D%NKT), INTENT(OUT) :: PZCONC3D
 LOGICAL, DIMENSION(D%NIJT,D%NKT), INTENT(OUT) :: OMICRO
 REAL, DIMENSION(D%NIJT,D%NKT), INTENT(OUT) :: PRVHENI
 REAL, DIMENSION(D%NIJT,D%NKT), INTENT(OUT) :: PZZZZ
+REAL, DIMENSION(D%NIJT,D%NKT), INTENT(IN)  :: PRCRIAUTI, PRCRIAUTC ! SPP: autoconversion thresholds
 !
 !
 !*       0.2   Declarations of local variables :
@@ -557,11 +558,12 @@ IF (PARAMI%CSUBG_RC_RR_ACCR=='PRFR' .OR. PARAMI%CSUBG_RR_EVAP=='PRFR') THEN
   ENDIF
   !We cannot use PWR(:,IKTB:IKTE,IRC) which is not contiguous
   ISIZE=IIJT*(IKTE-IKTB+1)
-  CALL ICE4_COMPUTE_PDF(CST, ICEP, ICED, ISIZE, PARAMI%CSUBG_AUCV_RC, PARAMI%CSUBG_AUCV_RI, PARAMI%CSUBG_PR_PDF,&
+  CALL ICE4_COMPUTE_PDF(CST, PARAMI, ICEP, ICED, ISIZE, PARAMI%CSUBG_AUCV_RC, PARAMI%CSUBG_AUCV_RI, PARAMI%CSUBG_PR_PDF,&
                         OMICRO(:,IKTB:IKTE), PRHODREF(:,IKTB:IKTE), PRT(:,IKTB:IKTE,IRC), PRT(:,IKTB:IKTE,IRI), &
                         PCLDFR(:,IKTB:IKTE), PT(:,IKTB:IKTE), ZSIGMA_RC(:,IKTB:IKTE), &
                         PHLC_HCF(:,IKTB:IKTE), ZHLC_LCF(:,IKTB:IKTE), PHLC_HRC(:,IKTB:IKTE), ZHLC_LRC(:,IKTB:IKTE), &
                         PHLI_HCF(:,IKTB:IKTE), ZHLI_LCF(:,IKTB:IKTE), PHLI_HRI(:,IKTB:IKTE), ZHLI_LRI(:,IKTB:IKTE), &
+                        PRCRIAUTI=PRCRIAUTI(:,IKTB:IKTE), PRCRIAUTC=PRCRIAUTC(:,IKTB:IKTE), PRF=&
                         PRAINFR(:,IKTB:IKTE))
   IF (KRR==7) THEN
     CALL ICE4_RAINFR_VERT(D, ICED, PRAINFR, PWR(:,:,IRR), &

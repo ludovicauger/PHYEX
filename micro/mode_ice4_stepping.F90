@@ -13,7 +13,7 @@ SUBROUTINE ICE4_STEPPING(CST, PARAMI, ICEP, ICED, BUCONF, &
                         &PHLC_HCF, PHLC_HRC, PHLI_HCF, PHLI_HRI, &
                         &PTHS, PRS, PRREVAV, PRAINFR, PSIGS, PTHT, PRT, &
                         &PICLDFR, PZZZ, PCONC3D, PSSIO, PSSIU, PIFR, &
-                        &PBUDGETS, PLATHAM_IAGGS)
+                        &PBUDGETS, PLATHAM_IAGGS, PRCRIAUTI, PRCRIAUTC)
 !     ######################################################################
 !
 !!****  * -  compute the explicit microphysical sources
@@ -104,6 +104,8 @@ REAL,    DIMENSION(KPROMA),                     INTENT(INOUT) :: PTHT
 REAL,    DIMENSION(KPROMA,7),                   INTENT(INOUT) :: PRT !Packed variables
 REAL,    DIMENSION(MERGE(KPROMA,0,BUCONF%LBU_ENABLE .OR. OSAVE_MICRO), &
                    MERGE(IBUNUM-IBUNUM_EXTRA,0,BUCONF%LBU_ENABLE .OR. OSAVE_MICRO)),INTENT(OUT)   :: PBUDGETS
+REAL,    DIMENSION(KPROMA), OPTIONAL,           INTENT(IN)    :: PRCRIAUTI ! SPP: perturbed ri->rs autoconversion threshold
+REAL,    DIMENSION(KPROMA), OPTIONAL,           INTENT(IN)    :: PRCRIAUTC ! SPP: perturbed rc->rr autoconversion threshold
 REAL,    DIMENSION(MERGE(KPROMA,0,OELEC)),      INTENT(IN)    :: PLATHAM_IAGGS ! E Function to simulate
                                                                                ! enhancement of IAGGS
 !
@@ -309,7 +311,8 @@ DO WHILE(ANY(ZTIME(1:KMICRO)<PTSTEP)) ! Loop to *really* compute tendencies
                         &ZRS_TEND, ZRG_TEND, ZRH_TEND, ZSSI, &
                         &ZA, ZB, ZATH, ZBTH, &
                         &PHLC_HCF, ZHLC_LCF, PHLC_HRC, ZHLC_LRC, &
-                        &PHLI_HCF, ZHLI_LCF, PHLI_HRI, ZHLI_LRI, PRAINFR)
+                        &PHLI_HCF, ZHLI_LCF, PHLI_HRI, ZHLI_LRI, PRAINFR, &
+                        &PRCRIAUTI, PRCRIAUTC)
 
     ! External tendencies
     IF(PARAMI%LEXT_TEND) THEN

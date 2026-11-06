@@ -18,7 +18,8 @@
                              PQPIS, PQCS, PQRS, PQIS, PQSS, PQGS, PQNIS,           &
                              PEFIELDW, PLATHAM_IAGGS,                              &
                              PSEA, PTOWN, PCONC3D,                                 &
-                             PINPRH, PFPR, PQHT, PQHS                  )
+                             PINPRH, PFPR, PQHT, PQHS,                             &
+                             PRCRIAUTI, PRCRIAUTC                      )
 !     #############################################################################
 !
 !!****  * -  compute the explicit microphysical sources
@@ -254,6 +255,8 @@ REAL, DIMENSION(MERGE(D%NIJT,0,OELEC),MERGE(D%NKT,0,OELEC)), OPTIONAL, INTENT(IN
 REAL, DIMENSION(D%NIJT),           OPTIONAL, INTENT(IN)    :: PSEA    ! Sea Mask
 REAL, DIMENSION(D%NIJT),           OPTIONAL, INTENT(IN)    :: PTOWN   ! Fraction that is town
 REAL, DIMENSION(D%NIJT,D%NKT), OPTIONAL,  INTENT(IN)    :: PCONC3D    ! Cloud droplet number concentration
+REAL, DIMENSION(D%NIJT), OPTIONAL, INTENT(IN)           :: PRCRIAUTI  ! SPP: perturbed ri->rs autoconversion threshold
+REAL, DIMENSION(D%NIJT), OPTIONAL, INTENT(IN)           :: PRCRIAUTC  ! SPP: perturbed rc->rr autoconversion threshold
 REAL, DIMENSION(D%NIJT),           OPTIONAL, INTENT(OUT)   :: PINPRH  ! Hail instant precip
 REAL, DIMENSION(D%NIJT,D%NKT,KRR), OPTIONAL, INTENT(OUT)   :: PFPR    ! upper-air precipitation fluxes
 REAL, DIMENSION(MERGE(D%NIJT,0,OELEC),MERGE(D%NKT,0,OELEC)), OPTIONAL, INTENT(INOUT) :: PQHT ! Hail electric charge at t
@@ -279,11 +282,24 @@ REAL, DIMENSION(MERGE(D%NIJT,0,OELEC .OR. BUCONF%LBU_ENABLE), &
            ZBUDGETS
 INTEGER :: ISIZE, IPROMA, IGPBLKS
 INTEGER :: JIJ, JK
+REAL, DIMENSION(D%NIJT,D%NKT) :: ZRCRIAUTI_2D, ZRCRIAUTC_2D
 INTEGER :: IKTB, IKTE, IKB, IIJB, IIJE, IIJT
 !
 !-------------------------------------------------------------------------------
 IF (LHOOK) CALL DR_HOOK('RAIN_ICE', 0, ZHOOK_HANDLE)
 !
+DO JK=1, D%NKT
+  IF (PRESENT(PRCRIAUTI)) THEN
+    ZRCRIAUTI_2D(:,JK)=PRCRIAUTI(:)
+  ELSE
+    ZRCRIAUTI_2D(:,JK)=ICEP%XCRIAUTI
+  ENDIF
+  IF (PRESENT(PRCRIAUTC)) THEN
+    ZRCRIAUTC_2D(:,JK)=PRCRIAUTC(:)
+  ELSE
+    ZRCRIAUTC_2D(:,JK)=ICEP%XCRIAUTC
+  ENDIF
+ENDDO
 CALL RAIN_ICE_PART1 ( D, CST, PARAMI, ICEP, ICED, ELECP, ELECD, BUCONF,     &
                       OELEC, OSEDIM_BEARD, PTHVREFZIKB,                     &
                       PTSTEP, KRR, PEXN,                                    &
@@ -300,7 +316,7 @@ CALL RAIN_ICE_PART1 ( D, CST, PARAMI, ICEP, ICED, ELECP, ELECD, BUCONF,     &
                       PSEA, PTOWN, PCONC3D,                                 &
                       PINPRH, PFPR, PQHT, PQHS,                             &
                       ZT, ZZ_LVFACT, ZZ_LSFACT, ZWR, ZWTH, ZCONC3D, LLMICRO,&
-                      ZZ_RVHENI, ZZZZ )
+                      ZZ_RVHENI, ZZZZ, ZRCRIAUTI_2D, ZRCRIAUTC_2D )
 !
 IKTB=D%NKTB
 IKTE=D%NKTE
@@ -343,7 +359,7 @@ CALL ICE4_PACK(D, CST, PARAMI, ICEP, ICED, BUCONF,               &
                PRAINFR, PSIGS, ZWTH, ZWR,                            &
                PICLDFR, ZZZZ, ZCONC3D,                               &
                PSSIO, PSSIU, PIFR,                                   &
-               ZBUDGETS, PLATHAM_IAGGS)
+               ZBUDGETS, PLATHAM_IAGGS, PRCRIAUTI, PRCRIAUTC)
 !
 CALL RAIN_ICE_PART3 ( D, CST, PARAMI, ICEP, ICED, ELECP, ELECD, BUCONF,     &
                       OELEC, OSEDIM_BEARD, PTHVREFZIKB,                     &

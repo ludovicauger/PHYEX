@@ -13,7 +13,7 @@ SUBROUTINE ICE4_PACK(D, CST, PARAMI, ICEP, ICED, BUCONF, &
                     &PHLC_HCF, PHLC_HRC, PHLI_HCF, PHLI_HRI, &
                     &PTHS, PRS, PRREVAV, PRAINFR, PSIGS, PTHT, PRT, &
                     &PICLDFR, PZZZ, PCONC3D, PSSIO, PSSIU, PIFR, &
-                    &PBUDGETS, PLATHAM_IAGGS)
+                    &PBUDGETS, PLATHAM_IAGGS, PRCRIAUTI, PRCRIAUTC)
 !     ######################################################################
 !
 !!****  * -  compute the explicit microphysical sources
@@ -115,6 +115,8 @@ REAL, DIMENSION(D%NIJT,D%NKT),   INTENT(IN)    :: PSIGS   ! Sigma_s at t
 REAL, DIMENSION(D%NIJT,D%NKT),   INTENT(IN)    :: PICLDFR
 REAL, DIMENSION(D%NIJT,D%NKT),   INTENT(IN)    :: PZZZ
 REAL, DIMENSION(D%NIJT,D%NKT),   INTENT(IN)    :: PCONC3D
+REAL, DIMENSION(D%NIJT), OPTIONAL, INTENT(IN)  :: PRCRIAUTI ! SPP: perturbed ri->rs autoconversion threshold
+REAL, DIMENSION(D%NIJT), OPTIONAL, INTENT(IN)  :: PRCRIAUTC ! SPP: perturbed rc->rr autoconversion threshold
 REAL, DIMENSION(D%NIJT,D%NKT),   INTENT(IN)    :: PSSIO   ! Super-saturation with respect to ice in the supersaturated fraction
 REAL, DIMENSION(D%NIJT,D%NKT),   INTENT(IN)    :: PSSIU   ! Sub-saturation with respect to ice in the  subsaturated fraction 
 REAL, DIMENSION(D%NIJT,D%NKT),   INTENT(IN)    :: PIFR    ! Ratio cloud ice moist part to dry part 
@@ -140,11 +142,14 @@ INTEGER :: ISTIJ, ISTK
 !For packing
 INTEGER :: IMICRO ! Case r_x>0 locations
 INTEGER :: JL, JV
+REAL, DIMENSION(D%NIJT,D%NKT) :: ZRCRIAUTI_2D, ZRCRIAUTC_2D ! SPP thresholds, unpacked case
 REAL, DIMENSION(KPROMA) :: &
                         & ZCIT,     & ! Pristine ice conc. at t
                         & ZICLDFR,  & ! Ice cloud fraction
                         & ZZZZ,     & ! model level height
                         & ZCONC3D,  & ! Cloud droplet number concentration at t
+                        & ZRCRIAUTI, & ! SPP: ri->rs autoconversion threshold
+                        & ZRCRIAUTC, & ! SPP: rc->rr autoconversion threshold
                         & ZSSIO,    & ! Super-saturation with respect to ice in the supersaturated fraction
                         & ZSSIU,    & ! Sub-saturation with respect to ice in the  subsaturated fraction
                         & ZIFR,     & ! Ratio cloud ice moist part to dry part
@@ -269,6 +274,16 @@ IF(PARAMI%LPACK_MICRO) THEN
               ZICLDFR    (IC)=PICLDFR (JIJ, JK)
               ZZZZ       (IC)=PZZZ    (JIJ, JK)
               ZCONC3D    (IC)=PCONC3D (JIJ, JK)
+              IF (PRESENT(PRCRIAUTI)) THEN
+                ZRCRIAUTI(IC)=PRCRIAUTI(JIJ)
+              ELSE
+                ZRCRIAUTI(IC)=ICEP%XCRIAUTI
+              ENDIF
+              IF (PRESENT(PRCRIAUTC)) THEN
+                ZRCRIAUTC(IC)=PRCRIAUTC(JIJ)
+              ELSE
+                ZRCRIAUTC(IC)=ICEP%XCRIAUTC
+              ENDIF
               ZSSIO      (IC)=PSSIO   (JIJ, JK)
               ZSSIU      (IC)=PSSIU   (JIJ, JK)
               ZIFR       (IC)=PIFR    (JIJ, JK)
@@ -335,7 +350,7 @@ IF(PARAMI%LPACK_MICRO) THEN
                         &ZICLDFR, ZZZZ, ZCONC3D, &
                         &ZSSIO, ZSSIU, ZIFR, &
                         &ZBUDGETS, &
-                        &ZLATHAM_IAGGS)
+                        &ZLATHAM_IAGGS, ZRCRIAUTI, ZRCRIAUTC)
       !
       !*       6.     UNPACKING
       !               ---------
@@ -408,6 +423,20 @@ ELSE ! PARAMI%LPACK_MICRO
     ENDDO
   ENDIF
   !
+  ! SPP thresholds expanded on the full 2D grid
+  DO JK=1, IKT
+    IF (PRESENT(PRCRIAUTI)) THEN
+      ZRCRIAUTI_2D(:,JK)=PRCRIAUTI(:)
+    ELSE
+      ZRCRIAUTI_2D(:,JK)=ICEP%XCRIAUTI
+    ENDIF
+    IF (PRESENT(PRCRIAUTC)) THEN
+      ZRCRIAUTC_2D(:,JK)=PRCRIAUTC(:)
+    ELSE
+      ZRCRIAUTC_2D(:,JK)=ICEP%XCRIAUTC
+    ENDIF
+  ENDDO
+  !
   !*       5bis.  TENDENCIES COMPUTATION
   !               ----------------------
   !
@@ -424,7 +453,7 @@ ELSE ! PARAMI%LPACK_MICRO
                     &PICLDFR, PZZZ, PCONC3D, &
                     &PSSIO, PSSIU, PIFR, &
                     &PBUDGETS, &
-                    &PLATHAM_IAGGS)
+                    &PLATHAM_IAGGS, ZRCRIAUTI_2D, ZRCRIAUTC_2D)
 
 ENDIF ! PARAMI%LPACK_MICRO
 !
